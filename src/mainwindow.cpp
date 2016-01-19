@@ -9,6 +9,14 @@ namespace medianFilter {
 MainWindow::MainWindow(const QString& img_file, QWidget* parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
 {
+    createCentralWidget(img_file);
+    createActions();
+    createMenus();
+    createToolBars();
+}
+
+void MainWindow::createCentralWidget(const QString& img_file)
+{
     _in_img_view = new ZoomGraphicsView(new QGraphicsScene());
     _in_img_view->setBackgroundBrush(Qt::black);
     _in_img_item = new QGraphicsPixmapItem();
@@ -34,9 +42,6 @@ MainWindow::MainWindow(const QString& img_file, QWidget* parent, Qt::WindowFlags
     main_lo->addWidget(_out_img_view);
     setCentralWidget(main_wgt);
     
-    createActions();
-    createMenus();
-    createToolBars();
 }
 
 void MainWindow::createActions()

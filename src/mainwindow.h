@@ -37,6 +37,7 @@ private slots:
     void open();
     
 private:
+    void createCentralWidget(const QString& img_file);
     void createActions();
     void createMenus();
     void createToolBars();
