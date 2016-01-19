@@ -29,10 +29,13 @@ private:
     
     ZoomGraphicsView* _in_img_view;
     QGraphicsPixmapItem* _in_img_item;
+    
+    ZoomGraphicsView* _out_img_view;
+    QGraphicsPixmapItem* _out_img_item;
 
 private slots:
     void open();
-
+    
 private:
     void createActions();
     void createMenus();

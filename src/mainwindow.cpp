@@ -9,20 +9,29 @@ namespace medianFilter {
 MainWindow::MainWindow(const QString& img_file, QWidget* parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
 {
-    _in_img_view = new ZoomGraphicsView();
+    _in_img_view = new ZoomGraphicsView(new QGraphicsScene());
     _in_img_view->setBackgroundBrush(Qt::black);
-    _in_img_view->setDragMode(QGraphicsView::ScrollHandDrag);
-    
-    _in_img_view->setScene(new QGraphicsScene());
     _in_img_item = new QGraphicsPixmapItem();
     _in_img_view->scene()->addItem(_in_img_item);
 
-    loadInputImage(img_file);   
+    _out_img_view = new ZoomGraphicsView(new QGraphicsScene());
+    _out_img_view->setBackgroundBrush(Qt::black);
+    _out_img_item = new QGraphicsPixmapItem();
+    _out_img_view->scene()->addItem(_out_img_item);
+    
+    connect(_in_img_view, SIGNAL(scaled(qreal, qreal)), _out_img_view, SLOT(setScale(qreal, qreal)));
+    connect(_in_img_view, SIGNAL(translated(qreal, qreal)), _out_img_view, SLOT(setTranslate(qreal, qreal)));
+    connect(_out_img_view, SIGNAL(scaled(qreal, qreal)), _in_img_view, SLOT(setScale(qreal, qreal)));
+    connect(_out_img_view, SIGNAL(translated(qreal, qreal)), _in_img_view, SLOT(setTranslate(qreal, qreal)));
+
+    loadInputImage(img_file); 
+    
     QWidget* main_wgt = new QWidget();
     QHBoxLayout* main_lo = new QHBoxLayout();
     main_lo->setContentsMargins(0,0,0,0);
     main_wgt->setLayout(main_lo);
     main_lo->addWidget(_in_img_view);
+    main_lo->addWidget(_out_img_view);
     setCentralWidget(main_wgt);
     
     createActions();
@@ -83,7 +92,12 @@ bool MainWindow::loadInputImage(const QString &img_file)
     
     _in_img_item->setPixmap(img);
     _in_img_view->setSceneRect(_in_img_item->boundingRect());
-    _in_img_view->fitInView(_in_img_view->sceneRect(), Qt::KeepAspectRatio);
+    _in_img_view->fitScene();
+    
+    // TODO: TMP
+    _out_img_item->setPixmap(img);
+    _out_img_view->setSceneRect(_out_img_item->boundingRect());
+    _out_img_view->fitScene();
     
     return true;
 }
