@@ -19,10 +19,10 @@ MainWindow::MainWindow(const QString& img_file, QWidget* parent, Qt::WindowFlags
     _out_img_item = new QGraphicsPixmapItem();
     _out_img_view->scene()->addItem(_out_img_item);
     
-    connect(_in_img_view, SIGNAL(scaled(qreal, qreal)), _out_img_view, SLOT(setScale(qreal, qreal)));
-    connect(_in_img_view, SIGNAL(translated(qreal, qreal)), _out_img_view, SLOT(setTranslate(qreal, qreal)));
-    connect(_out_img_view, SIGNAL(scaled(qreal, qreal)), _in_img_view, SLOT(setScale(qreal, qreal)));
-    connect(_out_img_view, SIGNAL(translated(qreal, qreal)), _in_img_view, SLOT(setTranslate(qreal, qreal)));
+    connect(_in_img_view, &ZoomGraphicsView::scaled, _out_img_view, &ZoomGraphicsView::setScale);
+    connect(_in_img_view, &ZoomGraphicsView::translated, _out_img_view, &ZoomGraphicsView::setTranslate);
+    connect(_out_img_view, &ZoomGraphicsView::scaled, _in_img_view, &ZoomGraphicsView::setScale);
+    connect(_out_img_view, &ZoomGraphicsView::translated, _in_img_view, &ZoomGraphicsView::setTranslate);
 
     loadInputImage(img_file); 
     
@@ -44,12 +44,12 @@ void MainWindow::createActions()
     _open_act = new QAction(QIcon::fromTheme("document-open"), tr("&Open..."), this);
     _open_act->setShortcuts(QKeySequence::Open);
     _open_act->setStatusTip(tr("Open an image"));
-    connect(_open_act, SIGNAL(triggered()), this, SLOT(open()));
+    connect(_open_act, &QAction::triggered, this, &MainWindow::open);
     
     _exit_act = new QAction(QIcon::fromTheme("application-exit"), tr("E&xit"), this);
     _exit_act->setShortcuts(QKeySequence::Quit);
     _exit_act->setStatusTip(tr("Exit the application"));
-    connect(_exit_act, SIGNAL(triggered()), this, SLOT(close()));
+    connect(_exit_act,  &QAction::triggered, this, &MainWindow::close);
 }
 
 void MainWindow::createMenus()
