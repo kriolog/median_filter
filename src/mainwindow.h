@@ -6,6 +6,7 @@
 class QAction;
 class QMenu;
 class QToolBar;
+class QProgressBar;
 class QGraphicsPixmapItem;
 
 namespace medianFilter {
@@ -13,37 +14,44 @@ namespace medianFilter {
 }
 
 namespace medianFilter {
-  
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
     MainWindow(const QString& img_file = QString(), QWidget* parent = 0, Qt::WindowFlags flags = 0);
-    
+
 private:
     QAction* _open_act;
     QAction* _exit_act;
     QMenu* _file_menu;
     QToolBar* _file_tool_bar;
-    
+    QProgressBar* _progress_bar;
+
     ZoomGraphicsView* _in_img_view;
     QGraphicsPixmapItem* _in_img_item;
-    
+
     ZoomGraphicsView* _out_img_view;
     QGraphicsPixmapItem* _out_img_item;
 
 private slots:
     void open();
-    
+
 private:
     void createCentralWidget(const QString& img_file);
     void createActions();
     void createMenus();
     void createToolBars();
-    
+    void createProgressBar();
+
     bool loadInputImage(const QString& img_file);
+    QPixmap outputImage(const QPixmap& in_img);
+
+    // TODO: TMP
+    QPixmap tmp();
 };
+
 
 } // namespace medianFilter
 

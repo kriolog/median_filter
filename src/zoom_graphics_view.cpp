@@ -46,7 +46,7 @@ void ZoomGraphicsView::wheelEvent(QWheelEvent* event)
         QGraphicsView::wheelEvent(event);
         return;
     }
-    
+
     qreal factor = 1.25;
     if(event->delta() < 0) {
         factor = 1. / factor;
@@ -59,16 +59,16 @@ void ZoomGraphicsView::wheelEvent(QWheelEvent* event)
 
     emit scaled(factor, factor);
     emit translated(translate.x(), translate.y());
-    
+
     event->ignore();
 }
 
 void ZoomGraphicsView::mouseMoveEvent(QMouseEvent* event)
-{   
+{
     QPointF scene_pos = mapToScene(event->pos());
     QGraphicsView::mouseMoveEvent(event);
     QPointF translate = event->pos() - mapFromScene(scene_pos);
-    
+
     emit translated(translate.x(), translate.y());
 }
 
@@ -79,7 +79,7 @@ void ZoomGraphicsView::mouseDoubleClickEvent(QMouseEvent* event)
         event->accept();
         return;
     }
-    event->ignore();    
+    event->ignore();
 }
 
 void ZoomGraphicsView::showEvent(QShowEvent *event) {
