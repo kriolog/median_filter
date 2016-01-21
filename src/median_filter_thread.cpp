@@ -56,6 +56,7 @@ void MedianFilterThread::run()
     std::vector<int> result_bleu(size);
     std::vector<int> result_alpha(size);
     _channel = 0;
+
     result_red = medianFilter(red, ni, nj, _w_size);
     ++_channel;
     if(is_color) {
@@ -96,14 +97,18 @@ std::vector<int> MedianFilterThread::medianFilter(
 
     int w_halfsize = w_size / 2;
     int w_sqr_size = w_size * w_size;
-    /// array of neighbors in window (including central pixel)
     std::vector<int> result(in_arr.size());
 
+    // "parallel for  schedule(static, 1)" is slightly faster than
+    // "parallel for" in this case
+    #pragma omp parallel for schedule(static, 1)
     for(int ci = 0; ci < ni; ++ci) {
-        if(ci % 10 == 0) {
-            // 100 signals for 1000x1000 image
+        if(ci % 100 == 0) {
+            // HACK : jigging exists but is never visible with schedule(static, 1)
+            // TODO : change to global counter for all the channels; use ++counter
             emit percentageComplete((_channel * 100) / _nb_channels + (ci * 100) / (ni * _nb_channels));
         }
+        /// array of neighbors in window (including central pixel)
         std::vector<int> w_items(w_sqr_size);
         for(int cj = 0; cj < nj; ++cj) {
             int w_item_nb = 0;
