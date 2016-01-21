@@ -3,20 +3,24 @@
 #include <QtWidgets>
 
 #include "zoom_graphics_view.h"
+#include "median_filter_thread.h"
 
 namespace medianFilter {
 
-MainWindow::MainWindow(const QString& img_file, QWidget* parent, Qt::WindowFlags flags)
+MainWindow::MainWindow(const QString& in_img_file, QWidget* parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)
 {
     createActions();
     createMenus();
     createToolBars();
     createProgressBar();
-    createCentralWidget(img_file);
+    createCentralWidget(in_img_file);
+
+    connect(this, &MainWindow::inputImageLoaded, this, &MainWindow::computeOutputImage);
+    loadInputImage(in_img_file);
 }
 
-void MainWindow::createCentralWidget(const QString& img_file)
+void MainWindow::createCentralWidget(const QString& in_img_file)
 {
     _in_img_view = new ZoomGraphicsView(new QGraphicsScene());
     _in_img_view->setBackgroundBrush(Qt::black);
@@ -32,8 +36,6 @@ void MainWindow::createCentralWidget(const QString& img_file)
     connect(_in_img_view, &ZoomGraphicsView::translated, _out_img_view, &ZoomGraphicsView::setTranslate);
     connect(_out_img_view, &ZoomGraphicsView::scaled, _in_img_view, &ZoomGraphicsView::setScale);
     connect(_out_img_view, &ZoomGraphicsView::translated, _in_img_view, &ZoomGraphicsView::setTranslate);
-
-    loadInputImage(img_file);
 
     QWidget* main_wgt = new QWidget();
     QHBoxLayout* main_lo = new QHBoxLayout();
@@ -75,6 +77,7 @@ void MainWindow::createProgressBar()
 {
     _progress_bar = new QProgressBar();
     statusBar()->addPermanentWidget(_progress_bar);
+    _progress_bar->setMaximum(100);
     _progress_bar->hide();
 
 }
@@ -96,56 +99,53 @@ void MainWindow::open()
     while(dialog.exec() == QDialog::Accepted && !loadInputImage(dialog.selectedFiles().first())) {}
 }
 
-bool MainWindow::loadInputImage(const QString &img_file)
+bool MainWindow::loadInputImage(const QString &in_img_file)
 {
-    if(img_file.isEmpty()) {
+    if(in_img_file.isEmpty()) {
         statusBar()->showMessage(tr("Open a file"));
         return false;
     }
 
-    QPixmap img(img_file);
-    if(img.isNull()) {
-        statusBar()->showMessage("Can't open file " + img_file);
+    QImage in_img(in_img_file);
+    if(in_img.isNull()) {
+        statusBar()->showMessage("Can't open file " + in_img_file);
         return false;
     }
 
-    statusBar()->showMessage(img_file);
+    statusBar()->showMessage(in_img_file);
 
-    _in_img_item->setPixmap(img);
+    _in_img_item->setPixmap(QPixmap::fromImage(in_img));
     _in_img_view->setSceneRect(_in_img_item->boundingRect());
-    _in_img_view->fitScene();
 
     // Show an empty pixmap during the output image compution.
     _out_img_item->setPixmap(QPixmap());
-    _out_img_item->setPixmap(outputImage(img));
-    _out_img_view->setSceneRect(_out_img_item->boundingRect());
-    _out_img_view->fitScene();
+    _out_img_view->setSceneRect(_in_img_view->sceneRect());
+
+    // Fit one of two images is enough.
+    _in_img_view->fitScene();
+
+    emit inputImageLoaded(in_img);
 
     return true;
 }
 
-QPixmap MainWindow::outputImage(const QPixmap& in_img)
+void MainWindow::computeOutputImage(const QImage& in_img)
 {
-    _progress_bar->setRange(0, 100);
-    _progress_bar->setValue(0);
+    _progress_bar->reset();
     _progress_bar->show();
-    QPixmap img = tmp();
-    _progress_bar->setValue(100);
-    _progress_bar->hide();
-
-    return img;
+    MedianFilterThread* median_filter_thread = new MedianFilterThread(in_img, 5, this); // TODO : add filter window spinbox
+    connect(median_filter_thread, &MedianFilterThread::percentageComplete, _progress_bar, &QProgressBar::setValue);
+    connect(median_filter_thread, &MedianFilterThread::finished, _progress_bar, &QProgressBar::hide);
+    connect(median_filter_thread, &MedianFilterThread::resultReady, this, &MainWindow::setOutputImage);
+    connect(median_filter_thread, &MedianFilterThread::finished, median_filter_thread, &QObject::deleteLater);
+    median_filter_thread->start();
 }
 
-QPixmap MainWindow::tmp()
+void MainWindow::setOutputImage(const QImage& out_img)
 {
-    for(size_t i = 0; i < 1000000000; ++i) {
-        if(i % 10000000 == 0)
-            QApplication::processEvents();
-        if(i % 100000000 == 0) {
-            _progress_bar->setValue(_progress_bar->value() + 10);
-        }
-    }
-    return _in_img_item->pixmap();
+    _out_img_item->setPixmap(QPixmap::fromImage(out_img));
+    _out_img_view->setSceneRect(_in_img_view->sceneRect());
+    _out_img_view->fitScene();
 }
 
 } // namespace medianFilter

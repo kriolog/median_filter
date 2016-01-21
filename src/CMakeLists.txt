@@ -1,4 +1,6 @@
 set(${PROJECT_NAME}_SOURCES
+    median_filter_thread.h
+    median_filter_thread.cpp
     zoom_graphics_view.cpp
     mainwindow.cpp
     main.cpp
