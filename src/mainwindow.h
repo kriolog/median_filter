@@ -49,6 +49,8 @@ private:
 
 private slots:
     void open();
+    void enableOpen();
+    void disableOpen();
 
     /// Compute an output image from the input image applying a filter.
     /// Launch the filter in a different thread and set the result via

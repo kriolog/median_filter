@@ -99,6 +99,16 @@ void MainWindow::open()
     while(dialog.exec() == QDialog::Accepted && !loadInputImage(dialog.selectedFiles().first())) {}
 }
 
+void MainWindow::enableOpen()
+{
+    _open_act->setEnabled(true);
+}
+
+void MainWindow::disableOpen()
+{
+    _open_act->setDisabled(true);
+}
+
 bool MainWindow::loadInputImage(const QString &in_img_file)
 {
     if(in_img_file.isEmpty()) {
@@ -131,13 +141,18 @@ bool MainWindow::loadInputImage(const QString &in_img_file)
 
 void MainWindow::computeOutputImage(const QImage& in_img)
 {
+    Q_ASSERT(!in_img.isNull());
+    disableOpen();
+
     _progress_bar->reset();
     _progress_bar->show();
+
     MedianFilterThread* median_filter_thread = new MedianFilterThread(in_img, 5, this); // TODO : add filter window spinbox
     connect(median_filter_thread, &MedianFilterThread::percentageComplete, _progress_bar, &QProgressBar::setValue);
     connect(median_filter_thread, &MedianFilterThread::finished, _progress_bar, &QProgressBar::hide);
     connect(median_filter_thread, &MedianFilterThread::resultReady, this, &MainWindow::setOutputImage);
     connect(median_filter_thread, &MedianFilterThread::finished, median_filter_thread, &QObject::deleteLater);
+    connect(median_filter_thread, &MedianFilterThread::finished, this, &MainWindow::enableOpen);
     median_filter_thread->start();
 }
 
