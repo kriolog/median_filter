@@ -1,4 +1,4 @@
-A median image filter with a simple viewer which allows to compare the result with the original image.
+A **median image filter** with a simple viewer which allows to compare the result with the original image.
 
 **Usage**
 
