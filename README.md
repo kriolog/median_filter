@@ -16,3 +16,4 @@ cd build
 cmake /path/to/project
 make
 ./median_filter test.png
+```
