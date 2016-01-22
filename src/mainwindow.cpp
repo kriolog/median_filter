@@ -4,14 +4,16 @@
 
 #include "zoom_graphics_view.h"
 #include "median_filter_thread.h"
+#include "odd_spin_box.h"
 
 namespace medianFilter {
 
 MainWindow::MainWindow(const QString& in_img_file, QWidget* parent, Qt::WindowFlags flags)
-    : QMainWindow(parent, flags)
+    : QMainWindow(parent, flags), _in_img()
 {
     createActions();
     createMenus();
+    createFilterParameters();
     createToolBars();
     createProgressBar();
     createCentralWidget(in_img_file);
@@ -67,10 +69,33 @@ void MainWindow::createMenus()
     _file_menu->addAction(_exit_act);
 }
 
+void MainWindow::createFilterParameters()
+{
+    _filter_window_size_sb = new OddSpinBox();
+    _filter_window_size_sb->setMinimum(3);
+    _filter_window_size_sb->setMaximum(99);
+    _filter_window_size_sb->setValue(5);
+
+    QLabel* lbl = new QLabel(tr("Window &Size"));
+    lbl->setBuddy(_filter_window_size_sb);
+
+    QPushButton* run_bn = new QPushButton(tr("&Run"));
+    connect(run_bn, &QPushButton::clicked, this, &MainWindow::computeOutputImage);
+
+    _filter_parameters_wgt = new QWidget();
+    QHBoxLayout* lo = new QHBoxLayout();
+    _filter_parameters_wgt->setLayout(lo);
+    lo->addWidget(lbl);
+    lo->addWidget(_filter_window_size_sb);
+    lo->addWidget(run_bn);
+}
+
 void MainWindow::createToolBars()
 {
     _file_tool_bar = addToolBar(tr("File"));
     _file_tool_bar->addAction(_open_act);
+    _filter_tool_bar = addToolBar(tr("Filter Parameters"));
+    _filter_tool_bar->addWidget(_filter_parameters_wgt);
 }
 
 void MainWindow::createProgressBar()
@@ -122,9 +147,10 @@ bool MainWindow::loadInputImage(const QString &in_img_file)
         return false;
     }
 
+    _in_img.swap(in_img);
     statusBar()->showMessage(in_img_file);
 
-    _in_img_item->setPixmap(QPixmap::fromImage(in_img));
+    _in_img_item->setPixmap(QPixmap::fromImage(_in_img));
     _in_img_view->setSceneRect(_in_img_item->boundingRect());
 
     // Show an empty pixmap during the output image compution.
@@ -134,20 +160,22 @@ bool MainWindow::loadInputImage(const QString &in_img_file)
     // Fit one of two images is enough.
     _in_img_view->fitScene();
 
-    emit inputImageLoaded(in_img);
+    emit inputImageLoaded(_in_img);
 
     return true;
 }
 
-void MainWindow::computeOutputImage(const QImage& in_img)
+void MainWindow::computeOutputImage()
 {
-    Q_ASSERT(!in_img.isNull());
-    disableOpen();
+    if(_in_img.isNull()){
+        return;
+    }
 
+    disableOpen();
     _progress_bar->reset();
     _progress_bar->show();
 
-    MedianFilterThread* median_filter_thread = new MedianFilterThread(in_img, 5, this); // TODO : add filter window spinbox
+    MedianFilterThread* median_filter_thread = new MedianFilterThread(_in_img, _filter_window_size_sb->value(), this);
     connect(median_filter_thread, &MedianFilterThread::percentageComplete, _progress_bar, &QProgressBar::setValue);
     connect(median_filter_thread, &MedianFilterThread::finished, _progress_bar, &QProgressBar::hide);
     connect(median_filter_thread, &MedianFilterThread::resultReady, this, &MainWindow::setOutputImage);
