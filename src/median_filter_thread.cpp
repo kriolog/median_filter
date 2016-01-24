@@ -2,6 +2,11 @@
 
 #include <algorithm>
 
+#include <itkImage.h>
+#include "itkMedianImageFilter.h"
+
+#include <QElapsedTimer>
+#include <QDebug>
 namespace medianFilter {
 
 MedianFilterThread::MedianFilterThread(const QImage& in_img, int w_size, QObject * parent) :
@@ -17,6 +22,8 @@ MedianFilterThread::MedianFilterThread(const QImage& in_img, int w_size, QObject
 
 void MedianFilterThread::run()
 {
+    QElapsedTimer timer;
+    timer.start();
     emit percentageComplete(0);
     if(_in_img.isNull()) {
         emit percentageComplete(100);
@@ -26,108 +33,70 @@ void MedianFilterThread::run()
 
     int ni = _in_img.width();
     int nj = _in_img.height();
-    int size = ni * nj;
-    Q_ASSERT(size > 0);
+    //int size = ni * nj;
+    //Q_ASSERT(size > 0);
     bool is_color = !_in_img.isGrayscale();
     _nb_channels = is_color ? 4 : 2;
 
-    // Copy input image to arrays of colors
-    std::vector<int> red(size);
-    std::vector<int> green (size);
-    std::vector<int> blue(size);
-    std::vector<int> alpha(size);
-    for(int i = 0; i < ni; ++i) {
-        for(int j = 0; j < nj; ++j) {
-            QRgb pixel = _in_img.pixel(i, j);
+    typedef itk::Image<unsigned char> TImage;
+    TImage::Pointer image = TImage::New();
+    TImage::Pointer image2 = TImage::New();
+    for(int i = 0; i < 4; ++i)
+{
+    itk::Index<2> corner = {{0,0}};
+    itk::Size<2> size = {{static_cast<itk::SizeValueType>(_in_img.size().width()),
+                            static_cast<itk::SizeValueType>(_in_img.size().height())}};
+    itk::ImageRegion<2> region(corner, size);
+    image->SetRegions(region);
+    image->Allocate();
+    image->FillBuffer(itk::NumericTraits<typename TImage::PixelType>::Zero);
 
-            int ij = i + ni * j;
-            red[ij] = qRed(pixel);
-            if(is_color) {
-                green[ij] = qGreen(pixel);
-                blue[ij] = qBlue(pixel);
-                alpha[ij] = qAlpha(pixel);
-            }
-        }
+    itk::ImageRegionIteratorWithIndex<TImage>
+        imageIterator(image, image->GetLargestPossibleRegion());
+
+    while(!imageIterator.IsAtEnd())
+    {
+        itk::Index<2> currentIndex = imageIterator.GetIndex();
+        typename TImage::PixelType pixel;
+        pixel = qRed(_in_img.pixel(currentIndex[0], currentIndex[1]));
+
+        imageIterator.Set(pixel);
+
+        ++imageIterator;
     }
 
-    // Median filter
-    std::vector<int> result_red(size);
-    std::vector<int> result_green(size);
-    std::vector<int> result_bleu(size);
-    std::vector<int> result_alpha(size);
-    _channel = 0;
+    int w_halfsize = _w_size / 2;
+    typedef itk::MedianImageFilter<TImage, TImage> FilterType;
+    FilterType::Pointer medianFilter = FilterType::New();
+    medianFilter->SetNumberOfThreads(8);
+    FilterType::InputSizeType radius;
+    radius.Fill(w_halfsize);
+    medianFilter->SetRadius(radius);
+    medianFilter->SetInput(image);
+    medianFilter->Update();
+    image2 = medianFilter->GetOutput();
+}
 
-    result_red = medianFilter(red, ni, nj, _w_size);
-    ++_channel;
-    if(is_color) {
-        result_green = medianFilter(green, ni, nj, _w_size);
-        ++_channel;
-        result_bleu = medianFilter(blue, ni, nj, _w_size);
-        ++_channel;
-    } else {
-        result_green = result_red;
-        result_bleu = result_red;
-    }
-    result_alpha = medianFilter(alpha, ni, nj, _w_size);
+    itk::ImageRegionIteratorWithIndex<TImage>
+        imageIterator2( image2,  image2->GetLargestPossibleRegion());
 
-    // Get result from four arrays of colors
-    for(int i = 0; i < ni; ++i) {
-        for(int j = 0; j < nj; ++j) {
-            int ij = i + ni * j;
-            QRgb pixel = qRgba(
-                result_red[ij],
-                result_green[ij],
-                result_bleu[ij],
-                result_alpha[ij]
-            );
-            _out_img.setPixel(i, j, pixel);
-        }
+    while(!imageIterator2.IsAtEnd())
+    {
+        itk::Index<2> currentIndex = imageIterator2.GetIndex();
+        typename TImage::PixelType pixel;
+        pixel = imageIterator2.Value();
+//         qDebug()<<pixel;
+        int red = pixel;
+        QRgb pix = qRgb(red, red, red);
+        _out_img.setPixel(currentIndex[0], currentIndex[1], pix);
+        imageIterator2.Set(pixel);
+
+        ++imageIterator2;
     }
 
     emit percentageComplete(100);
     emit resultReady(_out_img);
-}
-
-std::vector<int> MedianFilterThread::medianFilter(
-    const std::vector<int>& in_arr,
-    int ni, int nj, int w_size
-)
-{
-    Q_ASSERT(in_arr.size() == ni * nj);
-
-    int w_halfsize = w_size / 2;
-    int w_sqr_size = w_size * w_size;
-    std::vector<int> result(in_arr.size());
-
-    // "parallel for  schedule(static, 1)" is slightly faster than
-    // "parallel for" in this case
-    #pragma omp parallel for schedule(static, 1)
-    for(int ci = 0; ci < ni; ++ci) {
-        if(ci % 100 == 0) {
-            // HACK : jigging exists but is never visible with schedule(static, 1)
-            // TODO : change to global counter for all the channels; use ++counter
-            emit percentageComplete((_channel * 100) / _nb_channels + (ci * 100) / (ni * _nb_channels));
-        }
-        /// array of neighbors in window (including central pixel)
-        std::vector<int> w_items(w_sqr_size);
-        for(int cj = 0; cj < nj; ++cj) {
-            int w_item_nb = 0;
-            for(int i = ci - w_halfsize; i <= ci + w_halfsize; ++i) {
-                for(int j = cj - w_halfsize; j <= cj + w_halfsize; ++j) {
-                    if(i < 0 || i >= ni || j < 0 || j >= nj) {
-                        continue;
-                    }
-                    w_items[w_item_nb++] = in_arr[i + ni * j];
-                }
-            }
-            Q_ASSERT(w_item_nb <= w_sqr_size);
-            int mi = w_item_nb / 2;
-            std::nth_element(w_items.begin(), w_items.begin() + mi, w_items.begin() + w_item_nb);
-            result[ci + ni * cj] = w_items[mi];
-        }
-    }
-
-    return result;
+    qDebug()<<timer.elapsed();
 }
 
 } // namespace medianFilter

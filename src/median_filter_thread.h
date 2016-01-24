@@ -25,10 +25,7 @@ private:
     int _nb_channels;
 
 private:
-    std::vector<int> medianFilter(
-        const std::vector<int>& in_arr,
-        int ni, int nj, int w_size
-    );
+    // ...
 
 signals:
     void percentageComplete(int);
