@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include <itkImage.h>
-#include "itkMedianImageFilter.h"
+#include <itkRankImageFilter.h>
 
 #include <QElapsedTimer>
 #include <QDebug>
@@ -66,10 +66,10 @@ void MedianFilterThread::run()
     }
 
     int w_halfsize = _w_size / 2;
-    typedef itk::MedianImageFilter<TImage, TImage> FilterType;
+    typedef itk::RankImageFilter<TImage, TImage> FilterType;
     FilterType::Pointer medianFilter = FilterType::New();
     medianFilter->SetNumberOfThreads(8);
-    FilterType::InputSizeType radius;
+    FilterType::RadiusType radius;
     radius.Fill(w_halfsize);
     medianFilter->SetRadius(radius);
     medianFilter->SetInput(image);
