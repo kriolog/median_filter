@@ -5,6 +5,10 @@
 #include <QImage>
 #include <vector>
 
+namespace itk {
+    class QtProgressBar;
+}
+
 namespace medianFilter {
 
 class MedianFilterThread : public QThread
@@ -12,7 +16,7 @@ class MedianFilterThread : public QThread
     Q_OBJECT
 
 public:
-    MedianFilterThread(const QImage& in_img, int w_size, QObject * parent = 0);
+    MedianFilterThread(const QImage& in_img, int w_size, itk::QtProgressBar* pb, QObject * parent = 0);
     void run();
 
 private:
@@ -23,6 +27,7 @@ private:
     int _channel;
     // number of channels : 4 or 2 if image is grayscale
     int _nb_channels;
+    itk::QtProgressBar* _pb;
 
 private:
     // ...

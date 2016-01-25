@@ -11,6 +11,10 @@ class QProgressBar;
 class QWidget;
 class QGraphicsPixmapItem;
 
+namespace itk {
+    class QtProgressBar;
+}
+
 namespace medianFilter {
     class ZoomGraphicsView;
     class OddSpinBox;
@@ -33,7 +37,7 @@ private:
     QMenu* _file_menu;
     QToolBar* _file_tool_bar;
     QToolBar* _filter_tool_bar;
-    QProgressBar* _progress_bar;
+    itk::QtProgressBar* _progress_bar;
 
     QWidget* _filter_parameters_wgt;
     OddSpinBox* _filter_window_size_sb;

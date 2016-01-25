@@ -1,0 +1,4 @@
+[submodule "3rdparty/ITKApps"]
+	path = 3rdparty/ITKApps
+	url = git@github.com:InsightSoftwareConsortium/ITKApps.git
+	branch = itk_filter

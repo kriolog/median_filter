@@ -2,6 +2,8 @@
 
 #include <QtWidgets>
 
+#include "../3rdparty/ITKApps/QtITK/itkQtProgressBar.h"
+
 #include "zoom_graphics_view.h"
 #include "median_filter_thread.h"
 #include "odd_spin_box.h"
@@ -100,7 +102,7 @@ void MainWindow::createToolBars()
 
 void MainWindow::createProgressBar()
 {
-    _progress_bar = new QProgressBar();
+    _progress_bar = new itk::QtProgressBar(nullptr);
     statusBar()->addPermanentWidget(_progress_bar);
     _progress_bar->setMaximum(100);
     _progress_bar->hide();
@@ -175,9 +177,8 @@ void MainWindow::computeOutputImage()
     _progress_bar->reset();
     _progress_bar->show();
 
-    MedianFilterThread* median_filter_thread = new MedianFilterThread(_in_img, _filter_window_size_sb->value(), this);
-    connect(median_filter_thread, &MedianFilterThread::percentageComplete, _progress_bar, &QProgressBar::setValue);
-    connect(median_filter_thread, &MedianFilterThread::finished, _progress_bar, &QProgressBar::hide);
+    MedianFilterThread* median_filter_thread = new MedianFilterThread(_in_img, _filter_window_size_sb->value(), _progress_bar, this);
+    connect(median_filter_thread, &MedianFilterThread::finished, _progress_bar, &itk::QtProgressBar::hide);
     connect(median_filter_thread, &MedianFilterThread::resultReady, this, &MainWindow::setOutputImage);
     connect(median_filter_thread, &MedianFilterThread::finished, median_filter_thread, &QObject::deleteLater);
     connect(median_filter_thread, &MedianFilterThread::finished, this, &MainWindow::enableOpen);

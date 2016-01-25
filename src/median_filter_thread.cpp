@@ -5,17 +5,20 @@
 #include <itkImage.h>
 #include <itkRankImageFilter.h>
 
+#include "../3rdparty/ITKApps/QtITK/itkQtProgressBar.h"
+
 #include <QElapsedTimer>
 #include <QDebug>
 namespace medianFilter {
 
-MedianFilterThread::MedianFilterThread(const QImage& in_img, int w_size, QObject * parent) :
+MedianFilterThread::MedianFilterThread(const QImage& in_img, int w_size, itk::QtProgressBar* pb, QObject * parent) :
     QThread(parent),
     _in_img(in_img),
     _out_img(in_img.copy()),
     _w_size(w_size),
     _channel(0),
-    _nb_channels(4)
+    _nb_channels(4),
+    _pb(pb)
 {
     Q_ASSERT(_w_size >= 3 && _w_size % 2 == 1);
 }
@@ -68,7 +71,7 @@ void MedianFilterThread::run()
     int w_halfsize = _w_size / 2;
     typedef itk::RankImageFilter<TImage, TImage> FilterType;
     FilterType::Pointer medianFilter = FilterType::New();
-    medianFilter->SetNumberOfThreads(8);
+    _pb->Observe(medianFilter.GetPointer());
     FilterType::RadiusType radius;
     radius.Fill(w_halfsize);
     medianFilter->SetRadius(radius);
@@ -85,7 +88,6 @@ void MedianFilterThread::run()
         itk::Index<2> currentIndex = imageIterator2.GetIndex();
         typename TImage::PixelType pixel;
         pixel = imageIterator2.Value();
-//         qDebug()<<pixel;
         int red = pixel;
         QRgb pix = qRgb(red, red, red);
         _out_img.setPixel(currentIndex[0], currentIndex[1], pix);
